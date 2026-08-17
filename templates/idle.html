@@ -1,0 +1,12 @@
+<!-- IDLE STATE -->
+<div style="position: relative;">
+    <img id="mascot-img" src="/assets/idle.jpeg" alt="Itachi" style="width: 150px; height: 150px; object-fit: contain; border-radius: 20px; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.3));">
+</div>
+
+<div hx-post="/interact" 
+     hx-trigger="click" 
+     hx-swap="innerHTML" 
+     hx-target="#mascot-container"
+     hx-vals='{"transcription": ""}'
+     style="width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; cursor: pointer; z-index: 10;">
+</div>

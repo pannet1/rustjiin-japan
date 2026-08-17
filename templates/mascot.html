@@ -1,0 +1,72 @@
+<div class="speech-bubble" style="margin-bottom: 15px;">
+    <div id="speech-content">
+        {% if !chat.is_empty() %}
+            <p style="margin: 0 0 10px 0;">{{ chat }}</p>
+        {% endif %}
+        {% if !challenge.is_empty() %}
+            <p style="margin: 0; color: #cc0000;">{{ challenge }}</p>
+        {% endif %}
+    </div>
+    
+    <div style="margin-top: 10px; font-size: 0.85em; color: #ff9999; display: none; animation: pulse 2s infinite;" id="listening-indicator">
+        (Mic Active: Listening...)
+    </div>
+</div>
+
+<div style="position: relative;">
+    <img id="mascot-img" src="/assets/talking.jpeg" alt="Itachi" style="width: 150px; height: 150px; object-fit: contain; border-radius: 20px; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.3));">
+</div>
+
+<script>
+    (function() {
+        let content = document.getElementById('speech-content').innerText;
+        
+        window.AudioController.speak(content, function() {
+            let indicator = document.getElementById('listening-indicator');
+            if (!indicator) return;
+            
+            // Start the visual 10-second countdown!
+            let timeLeft = 10;
+            indicator.innerText = `(Mic Active: Listening... ${timeLeft}s)`;
+            indicator.style.display = 'block';
+            
+            let listenInterval = setInterval(function() {
+                timeLeft--;
+                if (timeLeft <= 0) {
+                    clearInterval(listenInterval);
+                    // 10 seconds expired, revert to idle slate
+                    htmx.ajax('GET', '/idle', {
+                        target: '#mascot-container',
+                        swap: 'innerHTML'
+                    });
+                } else {
+                    indicator.innerText = `(Mic Active: Listening... ${timeLeft}s)`;
+                }
+            }, 1000);
+            
+            // Expose a way to reset the timer from the fallback input box
+            window.resetIdleTimer = function() {
+                timeLeft = 10;
+                indicator.innerText = `(Mic Active: Listening... ${timeLeft}s)`;
+            };
+            
+            // Switch mascot to listening state
+            let img = document.getElementById('mascot-img');
+            if (img) img.src = '/assets/listening.jpeg';
+            
+            window.AudioController.listen(function(result) {
+                // Clear the countdown!
+                clearInterval(listenInterval);
+                
+                // Return to thinking state as soon as we finish recording and send the request
+                if (img) img.src = '/assets/thinking.jpeg';
+                
+                htmx.ajax('POST', '/interact', {
+                    target: '#mascot-container',
+                    swap: 'innerHTML',
+                    values: { transcription: result }
+                });
+            });
+        });
+    })();
+</script>

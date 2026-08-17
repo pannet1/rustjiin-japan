@@ -1,0 +1,6 @@
+/target
+/dist
+/gen
+*.db
+itachi_memory.db
+.env

@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Itachi</title>
+    <!-- Google Fonts for Japanese support -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: rgba(255, 255, 255, 0.01); /* Try white 1% opacity */
+            /* Force GPU compositing layer to constantly redraw */
+            will-change: transform, opacity;
+            transform: translateZ(0);
+            backdrop-filter: blur(0px); 
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-family: "Noto Sans JP", sans-serif;
+        }
+        
+        #mascot-container {
+            text-align: center;
+            cursor: pointer;
+            transition: transform 0.1s ease;
+            /* Allow dragging the window from the mascot */
+            -webkit-app-region: drag;
+            /* Make it completely transparent to the window */
+            background: transparent;
+        }
+
+        #mascot-container:active {
+            transform: scale(0.95);
+        }
+
+        /* Make button clicks not drag the window */
+        .interactive {
+            -webkit-app-region: no-drag;
+        }
+
+        h2 {
+            margin: 0 0 10px 0;
+        }
+
+        .htmx-indicator {
+            opacity: 0;
+            transition: opacity 200ms ease-in;
+        }
+        .htmx-request .htmx-indicator {
+            opacity: 1;
+        }
+        .htmx-request.htmx-indicator {
+            opacity: 1;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .speech-bubble {
+            position: relative;
+            background: #ffffff;
+            color: #000;
+            border-radius: 15px;
+            padding: 15px 20px;
+            margin-bottom: 20px;
+            max-width: 250px;
+            text-align: center;
+            font-size: 0.95em;
+            font-weight: 600;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            font-family: "Noto Sans JP", sans-serif;
+            line-height: 1.4;
+        }
+
+        .speech-bubble::after {
+            content: '';
+            position: absolute;
+            bottom: -15px;
+            left: 50%;
+            margin-left: -15px;
+            border-width: 15px 15px 0;
+            border-style: solid;
+            border-color: #ffffff transparent transparent transparent;
+            display: block;
+            width: 0;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="mascot-container" class="interactive"
+         hx-get="/idle"
+         hx-trigger="load"
+         hx-swap="innerHTML"
+         style="display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; padding-bottom: 20px;">
+    </div>
+
+    <script>
+        function logDebug(msg) {
+            console.log(msg);
+        }
+
+        // Fix WebKitGTK transparent window ghosting bug
+        document.body.addEventListener('htmx:afterSettle', function(evt) {
+            // Force a repaint by imperceptibly tweaking the container
+            let container = document.getElementById('mascot-container');
+            if (container) {
+                let old = container.style.transform;
+                container.style.transform = 'translateZ(0)';
+                container.offsetHeight; // Force reflow
+                container.style.transform = old;
+            }
+        });
+
+        document.body.addEventListener('htmx:beforeRequest', function(evt) {
+            let img = document.getElementById('mascot-img');
+            if (img) img.src = '/assets/thinking.jpeg';
+        });
+
+        window.AudioController = {
+            speak: function(text, onComplete) {
+                logDebug("TTS: Attempting to speak...");
+                if (!window.speechSynthesis) {
+                    logDebug("TTS: window.speechSynthesis NOT supported in this webview.");
+                    if(onComplete) setTimeout(onComplete, 1000);
+                    return;
+                }
+                
+                let voices = window.speechSynthesis.getVoices();
+                let jaVoice = voices.find(v => v.lang.includes('ja') || v.lang.includes('JP'));
+                
+                // Split text by punctuation to add natural pauses between sentences
+                let sentences = text.replace(/([.!?]+)/g, "$1|").split("|").filter(s => s.trim().length > 0);
+                let i = 0;
+                
+                function speakNext() {
+                    if (i >= sentences.length) {
+                        logDebug("TTS: Finished speaking all sentences.");
+                        if (onComplete) {
+                            onComplete();
+                            onComplete = null;
+                        }
+                        return;
+                    }
+                    
+                    let utterance = new SpeechSynthesisUtterance(sentences[i].trim());
+                    utterance.lang = 'ja-JP';
+                    
+                    // Reduced pitch and rate to sound friendly instead of creepy!
+                    utterance.pitch = 1.3; 
+                    utterance.rate = 1.05;
+                    
+                    if (jaVoice) {
+                        utterance.voice = jaVoice;
+                    }
+                    
+                    utterance.onend = function() {
+                        i++;
+                        // 400ms natural pause between sentences
+                        setTimeout(speakNext, 400);
+                    };
+                    
+                    utterance.onerror = function(e) {
+                        logDebug("TTS: Error - " + e.error);
+                        i++;
+                        setTimeout(speakNext, 400);
+                    }
+                    
+                    window.speechSynthesis.speak(utterance);
+                }
+                
+                speakNext();
+                
+                // Safety timeout overall
+                setTimeout(() => {
+                    if(onComplete) {
+                        logDebug("TTS: Safety timeout triggered.");
+                        onComplete();
+                        onComplete = null;
+                    }
+                }, Math.max(4000, text.length * 250) + (sentences.length * 400));
+            },
+            
+            listen: function(onResult) {
+                logDebug("STT: Attempting to listen...");
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                
+                if (!SpeechRecognition) {
+                    logDebug("STT: SpeechRecognition NOT supported.");
+                    window.AudioController.showFallbackInput(onResult);
+                    return;
+                }
+                
+                let recognition = new SpeechRecognition();
+                recognition.lang = 'ja-JP';
+                recognition.continuous = false;
+                recognition.interimResults = false;
+                
+                recognition.onresult = function(event) {
+                    let transcript = event.results[0][0].transcript;
+                    logDebug("STT: Heard -> " + transcript);
+                    onResult(transcript);
+                };
+                
+                recognition.onerror = function(event) {
+                    logDebug("STT: Error -> " + event.error);
+                    window.AudioController.showFallbackInput(onResult);
+                };
+                
+                try {
+                    recognition.start();
+                } catch(e) {
+                    logDebug("STT: Start failed -> " + e);
+                    window.AudioController.showFallbackInput(onResult);
+                }
+            },
+
+            showFallbackInput: function(onResult) {
+                let container = document.getElementById('mascot-container');
+                
+                // Prevent duplicate fallback inputs!
+                if (document.getElementById('fallback-input-container')) {
+                    return;
+                }
+
+                let inputHtml = `
+                    <div id="fallback-input-container" style="margin-top: 15px; width: 100%; display: flex; justify-content: center; z-index: 50;">
+                        <input type="text" id="fallback-input" placeholder="Type your response..." 
+                               style="width: 80%; padding: 8px; border-radius: 8px; border: 1px solid #444; background: #222; color: white; outline: none; font-family: inherit;" 
+                               autofocus autocomplete="off">
+                    </div>
+                `;
+                container.insertAdjacentHTML('beforeend', inputHtml);
+                let input = document.getElementById('fallback-input');
+                input.addEventListener('keypress', function(e) {
+                    // Reset the idle countdown if the user is actively typing
+                    if (window.resetIdleTimer) window.resetIdleTimer();
+                    
+                    if (e.key === 'Enter') {
+                        let val = input.value;
+                        document.getElementById('fallback-input-container').remove();
+                        onResult(val);
+                    }
+                });
+            }
+        };
+    </script>
+</body>
+</html>

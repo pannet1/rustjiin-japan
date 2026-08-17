@@ -1,0 +1,29 @@
+{
+  "productName": "rusting-jiin",
+  "version": "0.1.0",
+  "identifier": "com.tauri.rusting-jiin",
+  "build": {
+    "beforeDevCommand": "",
+    "beforeBuildCommand": "",
+    "frontendDist": "./dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "url": "http://127.0.0.1:3000",
+        "title": "Itachi Mascot",
+        "width": 300,
+        "height": 400,
+        "transparent": true,
+        "decorations": false,
+        "alwaysOnTop": true
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "icon": []
+  }
+}
