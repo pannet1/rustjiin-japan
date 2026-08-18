@@ -63,7 +63,7 @@ impl MemoryDB {
 
     async fn get_embedding(&self, text: &str) -> Result<Vec<f32>, Box<dyn std::error::Error + Send + Sync>> {
         let payload = json!({
-            "model": "text-embedding-nomic", // Common generic name, llama-swap might ignore it if it's default
+            "model": "nomic-embed-text", // Common generic name, llama-swap might ignore it if it's default
             "input": text
         });
 
@@ -74,6 +74,10 @@ impl MemoryDB {
             .await?;
 
         let data: serde_json::Value = response.json().await?;
+        
+        if let Some(err) = data.get("error") {
+            return Err(format!("LLM API Error: {}", err).into());
+        }
         
         let embedding = data["data"][0]["embedding"]
             .as_array()
