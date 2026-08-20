@@ -1,6 +1,8 @@
-# Rusting Jiin 
+# Rusting Jiin <img src="icons/32x32.png" alt="icon" align="right" width="48"> 
 
 An interactive, transparent desktop mascot and conversational Japanese language learning companion built with Rust and Tauri.
+
+> :snake: **GitHub Pages**: Visit the project landing page at [https://pannet1.github.io/rustjiin-japan/](https://pannet1.github.io/rustjiin-japan/)
 
 ## Features
 - **Stateless AI Architecture**: Uses `axum` and HTMX to drive the UI.
@@ -52,3 +54,11 @@ Since this application connects to a local AI server and your Windows machine ha
    - Go to the **Local Server** tab in LM Studio.
    - Load BOTH models into memory simultaneously (LM Studio allows multiple models).
    - Ensure the server is running on port `8080` (the URL should be `http://localhost:8080/v1`).
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## License
+
+This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
